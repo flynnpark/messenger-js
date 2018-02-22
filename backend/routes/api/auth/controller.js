@@ -1,3 +1,53 @@
+const User = require('../../../modules/user');
+
 exports.register = (req, res) => {
-    res.send('this router is working');
+    const { username, password } = req.body;
+    let newUser = null;
+
+    // create a new user if does not exist
+    const create = user => {
+        if (user) {
+            throw new Error('username exists');
+        } else {
+            return User.create(username, password);
+        }
+    };
+
+    // count the number of the username
+    const count = user => {
+        newUser = user;
+        return User.count({}).exec();
+    };
+
+    // assign admin if count is 1
+    const assign = count => {
+        if (count === 1) {
+            return newUser.assignAdmin();
+        } else {
+            return Promise.resolve(false);
+        }
+    };
+
+    // respond to the client
+    const respond = isAdmin => {
+        res.json({
+            message: 'Registered successfully',
+            admin: isAdmin ? true : false
+        });
+    };
+
+    // run when there is an error (username exists)
+    const onError = error => {
+        res.status(409).json({
+            message: error.message
+        });
+    };
+
+    // check username duplication
+    User.findOneByUsername(username)
+        .then(create)
+        .then(count)
+        .then(assign)
+        .then(respond)
+        .catch(onError);
 };
